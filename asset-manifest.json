@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/racing-game/static/css/main.e6c13ad2.css",
-    "main.js": "/racing-game/static/js/main.b099ffce.js",
+    "main.js": "/racing-game/static/js/main.c325e6c6.js",
     "static/js/453.8d6e259f.chunk.js": "/racing-game/static/js/453.8d6e259f.chunk.js",
     "index.html": "/racing-game/index.html",
     "main.e6c13ad2.css.map": "/racing-game/static/css/main.e6c13ad2.css.map",
-    "main.b099ffce.js.map": "/racing-game/static/js/main.b099ffce.js.map",
+    "main.c325e6c6.js.map": "/racing-game/static/js/main.c325e6c6.js.map",
     "453.8d6e259f.chunk.js.map": "/racing-game/static/js/453.8d6e259f.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.b099ffce.js"
+    "static/js/main.c325e6c6.js"
   ]
 }
