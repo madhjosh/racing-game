@@ -1,145 +1,304 @@
-export default function RacingGame() {
-  return (
-    <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-6">
-      <div className="w-full max-w-6xl rounded-3xl overflow-hidden shadow-2xl border border-neutral-800 bg-neutral-900">
-        <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Arcade Racing Game</h1>
-            <p className="text-neutral-400 text-sm mt-1">
-              Professional-style racing layout with pause, resume, player name, scoring, coins, fuel, and power-ups.
-            </p>
-          </div>
+import React, { useEffect, useRef, useState } from 'react';
 
+export default function RacingGame() {
+  const canvasRef = useRef(null);
+  const animationRef = useRef(null);
+  const keysRef = useRef({});
+
+  const [playerName, setPlayerName] = useState('Player 1');
+  const [isRunning, setIsRunning] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [score, setScore] = useState(0);
+  const [coins, setCoins] = useState(0);
+  const [fuel, setFuel] = useState(100);
+  const [lives, setLives] = useState(3);
+  const [level, setLevel] = useState(1);
+  const [speed, setSpeed] = useState(0);
+
+  const gameStateRef = useRef({
+    playerLane: 1,
+    roadOffset: 0,
+    obstacles: [],
+    coins: [],
+    frame: 0,
+    speed: 0,
+    boosting: false,
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      keysRef.current[e.key] = true;
+
+      if (e.key === 'p' || e.key === 'P') {
+        setIsPaused((prev) => !prev);
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      keysRef.current[e.key] = false;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1100;
+    canvas.height = 650;
+
+    const loop = () => {
+      const state = gameStateRef.current;
+
+      if (isRunning && !isPaused) {
+        state.frame += 1;
+
+        if (keysRef.current['ArrowLeft']) {
+          state.playerLane = Math.max(0, state.playerLane - 0.08);
+        }
+
+        if (keysRef.current['ArrowRight']) {
+          state.playerLane = Math.min(3, state.playerLane + 0.08);
+        }
+
+        if (keysRef.current['ArrowUp']) {
+          state.speed = Math.min(12, state.speed + 0.15);
+        } else {
+          state.speed = Math.max(2, state.speed - 0.05);
+        }
+
+        if (keysRef.current[' ']) {
+          state.speed = Math.min(18, state.speed + 0.2);
+          state.boosting = true;
+        } else {
+          state.boosting = false;
+        }
+
+        state.roadOffset += state.speed;
+
+        setSpeed(Math.round(state.speed * 12));
+        setScore((prev) => prev + Math.floor(state.speed));
+        setFuel((prev) => Math.max(0, prev - 0.01 * state.speed));
+
+        if (state.frame % 90 === 0) {
+          state.obstacles.push({
+            lane: Math.floor(Math.random() * 4),
+            z: 0,
+            color: ['#ef4444', '#3b82f6', '#22c55e'][Math.floor(Math.random() * 3)],
+          });
+        }
+
+        if (state.frame % 140 === 0) {
+          state.coins.push({
+            lane: Math.floor(Math.random() * 4),
+            z: 0,
+          });
+        }
+
+        state.obstacles.forEach((o) => {
+          o.z += state.speed * 0.015;
+        });
+
+        state.coins.forEach((c) => {
+          c.z += state.speed * 0.015;
+        });
+
+        state.obstacles = state.obstacles.filter((o) => o.z < 1.2);
+        state.coins = state.coins.filter((c) => c.z < 1.2);
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      skyGradient.addColorStop(0, '#8fd3ff');
+      skyGradient.addColorStop(1, '#cfefff');
+      ctx.fillStyle = skyGradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#6ea0c4';
+      ctx.beginPath();
+      ctx.moveTo(0, 330);
+      ctx.lineTo(120, 190);
+      ctx.lineTo(240, 300);
+      ctx.lineTo(390, 170);
+      ctx.lineTo(530, 280);
+      ctx.lineTo(760, 140);
+      ctx.lineTo(930, 280);
+      ctx.lineTo(1100, 180);
+      ctx.lineTo(1100, 380);
+      ctx.lineTo(0, 380);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#228b22';
+      ctx.fillRect(0, 320, canvas.width, canvas.height - 320);
+
+      const horizonY = 80;
+      const roadBottomWidth = 520;
+      const roadTopWidth = 160;
+      const roadCenterX = canvas.width / 2;
+
+      ctx.fillStyle = '#4b5563';
+      ctx.beginPath();
+      ctx.moveTo(roadCenterX - roadTopWidth / 2, horizonY);
+      ctx.lineTo(roadCenterX + roadTopWidth / 2, horizonY);
+      ctx.lineTo(roadCenterX + roadBottomWidth / 2, canvas.height);
+      ctx.lineTo(roadCenterX - roadBottomWidth / 2, canvas.height);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#a3a3a3';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      for (let lane = 1; lane <= 3; lane++) {
+        const topLaneX = roadCenterX - roadTopWidth / 2 + (roadTopWidth / 4) * lane;
+        const bottomLaneX = roadCenterX - roadBottomWidth / 2 + (roadBottomWidth / 4) * lane;
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(topLaneX, horizonY);
+        ctx.lineTo(bottomLaneX, canvas.height);
+        ctx.stroke();
+      }
+
+      const dashOffset = gameStateRef.current.roadOffset % 80;
+
+      for (let i = 0; i < 12; i++) {
+        const y = horizonY + i * 60 + dashOffset;
+        const t = (y - horizonY) / (canvas.height - horizonY);
+        const width = 5 + t * 6;
+        const height = 12 + t * 24;
+
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(roadCenterX - width / 2, y, width, height);
+      }
+
+      function getLaneX(lane, y) {
+        const t = (y - horizonY) / (canvas.height - horizonY);
+        const roadWidthAtY = roadTopWidth + (roadBottomWidth - roadTopWidth) * t;
+        return roadCenterX - roadWidthAtY / 2 + (roadWidthAtY / 4) * (lane + 0.5);
+      }
+
+      state.coins.forEach((coin) => {
+        const y = horizonY + coin.z * (canvas.height - horizonY);
+        const x = getLaneX(coin.lane, y);
+        const size = 10 + coin.z * 16;
+
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      state.obstacles.forEach((obs) => {
+        const y = horizonY + obs.z * (canvas.height - horizonY);
+        const x = getLaneX(obs.lane, y);
+        const width = 20 + obs.z * 40;
+        const height = 30 + obs.z * 60;
+
+        ctx.fillStyle = obs.color;
+        ctx.fillRect(x - width / 2, y - height / 2, width, height);
+
+        ctx.fillStyle = '#dbeafe';
+        ctx.fillRect(x - width / 4, y - height / 2 + 8, width / 2, 10);
+      });
+
+      const playerY = canvas.height - 90;
+      const playerX = getLaneX(state.playerLane, playerY);
+      const shake = state.boosting ? Math.random() * 4 - 2 : 0;
+
+      ctx.save();
+      ctx.translate(playerX + shake, playerY + shake);
+      ctx.shadowColor = '#22d3ee';
+      ctx.shadowBlur = state.boosting ? 30 : 15;
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(-32, -50, 64, 100);
+
+      ctx.fillStyle = '#cffafe';
+      ctx.fillRect(-18, -35, 36, 18);
+
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(-28, -45, 10, 18);
+      ctx.fillRect(18, -45, 10, 18);
+      ctx.fillRect(-28, 28, 10, 18);
+      ctx.fillRect(18, 28, 10, 18);
+
+      ctx.restore();
+
+      animationRef.current = requestAnimationFrame(loop);
+    };
+
+    loop();
+
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [isPaused, isRunning]);
+
+  return (
+    <div className="min-h-screen bg-neutral-200 p-6 flex flex-col items-center gap-4">
+      <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl p-4 border border-neutral-300">
+        <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
           <div className="flex gap-3 items-center">
             <input
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              className="px-4 py-2 rounded-xl border border-neutral-300"
               placeholder="Player Name"
-              className="bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-2 text-sm outline-none"
             />
-            <button className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-medium">
+            <div className="font-semibold text-neutral-700">{playerName}</div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setIsRunning(true);
+                setIsPaused(false);
+              }}
+              className="px-5 py-2 rounded-xl bg-green-600 text-white font-semibold"
+            >
               Start
             </button>
-            <button className="px-4 py-2 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-sm font-medium">
-              Pause
+
+            <button
+              onClick={() => setIsPaused((prev) => !prev)}
+              className="px-5 py-2 rounded-xl bg-blue-600 text-white font-semibold"
+            >
+              {isPaused ? 'Resume' : 'Pause'}
             </button>
-            <button className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-sm font-medium">
+
+            <button
+              onClick={() => setIsRunning(false)}
+              className="px-5 py-2 rounded-xl bg-red-600 text-white font-semibold"
+            >
               Stop
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-12 min-h-[700px]">
-          <div className="col-span-9 relative bg-gradient-to-b from-sky-400 via-sky-300 to-emerald-200 overflow-hidden">
-            <div className="absolute top-4 left-4 right-4 z-20 grid grid-cols-5 gap-3">
-              <div className="bg-black/40 backdrop-blur-md rounded-2xl p-3 text-center">
-                <div className="text-xs text-neutral-300">Speed</div>
-                <div className="text-xl font-bold">142 km/h</div>
-              </div>
-              <div className="bg-black/40 backdrop-blur-md rounded-2xl p-3 text-center">
-                <div className="text-xs text-neutral-300">Score</div>
-                <div className="text-xl font-bold">8,450</div>
-              </div>
-              <div className="bg-black/40 backdrop-blur-md rounded-2xl p-3 text-center">
-                <div className="text-xs text-neutral-300">Coins</div>
-                <div className="text-xl font-bold">126</div>
-              </div>
-              <div className="bg-black/40 backdrop-blur-md rounded-2xl p-3 text-center">
-                <div className="text-xs text-neutral-300">Fuel</div>
-                <div className="text-xl font-bold">72%</div>
-              </div>
-              <div className="bg-black/40 backdrop-blur-md rounded-2xl p-3 text-center">
-                <div className="text-xs text-neutral-300">Lives</div>
-                <div className="text-xl font-bold">3</div>
-              </div>
-            </div>
+        <div className="relative rounded-3xl overflow-hidden border-[4px] border-neutral-700 shadow-2xl bg-black">
+          <canvas ref={canvasRef} className="w-full h-auto block" />
 
-            <div className="absolute inset-0">
-              <div className="absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-sky-300 to-transparent" />
-
-              <div className="absolute bottom-0 left-0 right-0 h-[75%] flex justify-center">
-                <div
-                  className="relative h-full"
-                  style={{
-                    width: '70%',
-                    clipPath: 'polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%)',
-                    background: 'linear-gradient(to bottom, #4b5563, #1f2937)'
-                  }}
-                >
-                  <div className="absolute inset-0 flex justify-center">
-                    <div className="w-2 bg-yellow-300/80 h-full" />
-                  </div>
-
-                  <div className="absolute inset-0 grid grid-cols-4">
-                    <div className="border-r border-dashed border-white/30" />
-                    <div className="border-r border-dashed border-white/30" />
-                    <div className="border-r border-dashed border-white/30" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="absolute left-[35%] bottom-[28%] w-12 h-24 rounded-xl bg-red-500 shadow-2xl border-4 border-red-300" />
-              <div className="absolute left-[48%] bottom-[15%] w-14 h-28 rounded-xl bg-yellow-400 shadow-2xl border-4 border-yellow-200" />
-              <div className="absolute left-[60%] bottom-[45%] w-10 h-20 rounded-xl bg-blue-500 shadow-2xl border-4 border-blue-300" />
-              <div className="absolute left-[52%] bottom-[65%] w-8 h-16 rounded-xl bg-red-400 opacity-90" />
-
-              <div className="absolute left-[46%] bottom-[6%] w-16 h-32 rounded-2xl bg-cyan-400 border-4 border-cyan-200 shadow-[0_0_40px_rgba(34,211,238,0.8)]" />
-            </div>
-
-            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-6 py-3 rounded-2xl text-sm text-neutral-200">
-              Use Arrow Keys to Move • Space to Boost • P to Pause
-            </div>
+          <div className="absolute top-4 left-4 right-4 text-white z-10 grid grid-cols-4 gap-4 text-lg font-semibold">
+            <div>❤️ {lives}</div>
+            <div>🏁 {score}</div>
+            <div>🪙 {coins}</div>
+            <div>⛽ {Math.round(fuel)}%</div>
+            <div>Lvl {level}</div>
+            <div>🔥 {speed}</div>
           </div>
 
-          <div className="col-span-3 bg-neutral-950 border-l border-neutral-800 p-5 flex flex-col gap-5">
-            <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
-              <h2 className="font-semibold text-lg mb-3">Player</h2>
-              <div className="space-y-2 text-sm text-neutral-300">
-                <div className="flex justify-between"><span>Name</span><span>Player 1</span></div>
-                <div className="flex justify-between"><span>Car</span><span>Sports GT</span></div>
-                <div className="flex justify-between"><span>Theme</span><span>Desert Track</span></div>
-                <div className="flex justify-between"><span>Level</span><span>7</span></div>
-              </div>
-            </div>
-
-            <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
-              <h2 className="font-semibold text-lg mb-3">Controls</h2>
-              <div className="space-y-3 text-sm text-neutral-300">
-                <div className="flex justify-between"><span>⬅️ ➡️</span><span>Move</span></div>
-                <div className="flex justify-between"><span>⬆️</span><span>Accelerate</span></div>
-                <div className="flex justify-between"><span>⬇️</span><span>Brake</span></div>
-                <div className="flex justify-between"><span>Space</span><span>Boost</span></div>
-                <div className="flex justify-between"><span>P</span><span>Pause</span></div>
-              </div>
-            </div>
-
-            <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
-              <h2 className="font-semibold text-lg mb-3">Garage</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <button className="rounded-xl p-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-sm">
-                  Sports Car
-                </button>
-                <button className="rounded-xl p-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-sm">
-                  Truck
-                </button>
-                <button className="rounded-xl p-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-sm">
-                  Formula
-                </button>
-                <button className="rounded-xl p-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-sm">
-                  SUV
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-auto bg-red-950/40 border border-red-800 rounded-2xl p-4">
-              <h2 className="font-semibold text-red-300 mb-2">Game Over</h2>
-              <div className="text-sm text-neutral-300 space-y-1">
-                <div>Final Score: 12,450</div>
-                <div>Coins Collected: 89</div>
-                <div>Distance: 12.8 km</div>
-              </div>
-              <button className="w-full mt-4 rounded-xl bg-blue-600 hover:bg-blue-500 py-3 font-medium">
-                Play Again
-              </button>
-            </div>
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white bg-black/40 px-4 py-2 rounded-xl text-sm">
+            Arrow Keys | Space Boost | P Pause
           </div>
         </div>
       </div>
