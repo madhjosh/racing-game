@@ -1,7 +1,8 @@
-cmd run or terminal:
+1. Copy the latest RacingGame.jsx to src folder.
+2. cmd run or terminal:
 
 C:\Users\HP\Desktop\racing-game>
 git add .
-git commit -m "Describe your changes"
+git commit -m "3D view"
 git push origin main
 npm run deploy
