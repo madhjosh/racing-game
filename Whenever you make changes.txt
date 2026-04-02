@@ -1,0 +1,7 @@
+cmd run or terminal:
+
+C:\Users\HP\Desktop\racing-game>
+git add .
+git commit -m "Describe your changes"
+git push origin main
+npm run deploy
